@@ -1,35 +1,56 @@
-#!/usr/bin/env python3
-"""news-image-20261126 entry point.
+"""Entry point for the 'The World Today' front-page render.
 
-Renders the front page with render.py (Pillow) and writes entry.png into
-the output directory. Standard library only in this file; deterministic:
-running it twice produces a byte-identical entry.png.
+Standard library only. It finds render.py next to this file, runs it
+in a fresh interpreter, and makes sure the PNG lands where make.fun
+expects it:
 
-Usage:  MAKEFUN_OUTPUT_DIR=out python3 main.py
-        (falls back to ./out when the variable is unset)
+- MAKEFUN_OUTPUT_DIR set  -> entry.png goes there
+- otherwise               -> entry.png goes next to this file
+
+Usage:  python3 main.py
 """
 
 import os
-import shutil
 import subprocess
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+
+def script_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def output_dir():
+    env = os.environ.get("MAKEFUN_OUTPUT_DIR")
+    if env:
+        return env
+    return script_dir()
 
 
 def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or os.path.join(
-        os.getcwd(), "out")
-    os.makedirs(out_dir, exist_ok=True)
-    tmp_path = os.path.join(out_dir, ".entry.tmp.png")
-    final_path = os.path.join(out_dir, "entry.png")
-    subprocess.run(
-        [sys.executable, os.path.join(HERE, "render.py"), tmp_path],
-        check=True,
+    here = script_dir()
+    renderer = os.path.join(here, "render.py")
+    if not os.path.isfile(renderer):
+        print("render.py not found next to main.py", file=sys.stderr)
+        return 1
+    target = output_dir()
+    os.makedirs(target, exist_ok=True)
+    env = dict(os.environ)
+    env["MAKEFUN_OUTPUT_DIR"] = target
+    done = subprocess.run(
+        [sys.executable, renderer, target],
+        env=env,
+        check=False,
     )
-    shutil.move(tmp_path, final_path)
-    print("wrote", final_path)
+    if done.returncode != 0:
+        print("render.py failed", file=sys.stderr)
+        return done.returncode
+    made = os.path.join(target, "entry.png")
+    if not os.path.isfile(made):
+        print("entry.png was not produced", file=sys.stderr)
+        return 1
+    print(made)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
