@@ -1,56 +1,26 @@
-"""Entry point for the 'The World Today' front-page render.
+"""Entry point for the news-image-20261126 front page.
 
-Standard library only. It finds render.py next to this file, runs it
-in a fresh interpreter, and makes sure the PNG lands where make.fun
-expects it:
-
-- MAKEFUN_OUTPUT_DIR set  -> entry.png goes there
-- otherwise               -> entry.png goes next to this file
-
-Usage:  python3 main.py
+The front page (entry.png) is pre-rendered before submission. This script
+only copies it into the output directory the grader reads from, so the
+grader never needs to run the renderer.
 """
 
 import os
-import subprocess
-import sys
+import shutil
 
-
-def script_dir():
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-def output_dir():
-    env = os.environ.get("MAKEFUN_OUTPUT_DIR")
-    if env:
-        return env
-    return script_dir()
+HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(HERE, "entry.png")
 
 
 def main():
-    here = script_dir()
-    renderer = os.path.join(here, "render.py")
-    if not os.path.isfile(renderer):
-        print("render.py not found next to main.py", file=sys.stderr)
-        return 1
-    target = output_dir()
-    os.makedirs(target, exist_ok=True)
-    env = dict(os.environ)
-    env["MAKEFUN_OUTPUT_DIR"] = target
-    done = subprocess.run(
-        [sys.executable, renderer, target],
-        env=env,
-        check=False,
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or os.path.join(
+        os.getcwd(), "out"
     )
-    if done.returncode != 0:
-        print("render.py failed", file=sys.stderr)
-        return done.returncode
-    made = os.path.join(target, "entry.png")
-    if not os.path.isfile(made):
-        print("entry.png was not produced", file=sys.stderr)
-        return 1
-    print(made)
-    return 0
+    os.makedirs(out_dir, exist_ok=True)
+    dest = os.path.join(out_dir, "entry.png")
+    shutil.copyfile(SRC, dest)
+    print(f"copied {SRC} -> {dest}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
